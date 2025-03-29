@@ -1,4 +1,4 @@
-# OpenGPT
+# OpenChat
 
 A simple web-based chat interface for interacting with various AI models.
 
@@ -29,7 +29,7 @@ A simple web-based chat interface for interacting with various AI models.
 
 1. Clone the repository
    ```
-   git clone https://github.com/MithunWijayasiri/OpenGPT.git
+   git clone https://github.com/MithunWijayasiri/OpenChat.git
    ```
 
 2. Install dependencies

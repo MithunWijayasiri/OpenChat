@@ -493,7 +493,7 @@ export default function ChatPage() {
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${apiKeyInfo.key}`,
                   'HTTP-Referer': window.location.origin,
-                  'X-Title': 'OpenGPT Chat'
+                  'X-Title': 'OpenChat'
                 },
                 body: JSON.stringify({
                   model: selectedModel,
@@ -808,7 +808,7 @@ export default function ChatPage() {
             <Plus size={16} className={`footer-button-icon ${!isSidebarCollapsed ? 'footer-button-icon-with-margin' : ''}`} />
             {!isSidebarCollapsed && <span>Add API Key</span>}
           </button>
-           <button
+          <button
             onClick={toggleTheme}
             title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
             className={`footer-button ${isSidebarCollapsed ? 'footer-button-centered' : ''}`}
@@ -816,7 +816,7 @@ export default function ChatPage() {
             {theme === 'light' ? <Moon size={16} className={`footer-button-icon ${!isSidebarCollapsed ? 'footer-button-icon-with-margin' : ''}`} /> : <Sun size={16} className={`footer-button-icon ${!isSidebarCollapsed ? 'footer-button-icon-with-margin' : ''}`} />}
             {!isSidebarCollapsed && <span>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>}
           </button>
-           <button
+          <button
             title="Settings"
             className={`footer-button ${isSidebarCollapsed ? 'footer-button-centered' : ''}`}
             onClick={() => alert('Settings/Account area placeholder.')}
@@ -825,7 +825,7 @@ export default function ChatPage() {
             {!isSidebarCollapsed && <span>Settings</span>}
           </button>
           {/* Sidebar Toggle Button */}
-           <button
+          <button
             onClick={toggleSidebar}
             title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
             className={`footer-button ${isSidebarCollapsed ? 'footer-button-centered' : ''}`}
