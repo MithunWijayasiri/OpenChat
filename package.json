@@ -20,6 +20,7 @@
   },
   "scripts": {
     "start": "cross-env CI=true npm_config_audit=false react-scripts start",
+    "dev": "cross-env CI=true npm_config_audit=false react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
