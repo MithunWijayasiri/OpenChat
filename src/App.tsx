@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent, ChangeEvent, useCallback } from 'react';
 import { Sun, Moon, Send, Bot, User, Plus, Settings, ChevronDown, ChevronsLeft, ChevronsRight, MessageSquare, X, PlusSquare, Trash2, Edit, MoreHorizontal } from 'lucide-react'; // Added Trash2, Edit and MoreHorizontal icons
 import './App.css';
 
@@ -192,131 +192,6 @@ const ApiKeyModal = ({ isOpen, onClose, onAddKey }: {
   );
 };
 
-// Real API function to connect to different providers
-const sendChatRequest = async (
-  message: string, 
-  modelId: string, 
-  apiKey: string, 
-  provider: Provider
-): Promise<string> => {
-  console.log(`Sending request to ${provider} model: ${modelId}`);
-  
-  try {
-    let response;
-    
-    switch (provider) {
-      case 'OpenRouter':
-        response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-            'HTTP-Referer': window.location.origin,
-            'X-Title': 'OpenGPT Chat'
-          },
-          body: JSON.stringify({
-            model: modelId,
-            messages: [{ role: 'user', content: message }]
-          })
-        });
-        break;
-        
-      case 'Anthropic':
-        response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01'
-          },
-          body: JSON.stringify({
-            model: modelId,
-            messages: [{ role: 'user', content: message }],
-            max_tokens: 1024
-          })
-        });
-        break;
-        
-      case 'Google':
-        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: message }] }]
-          })
-        });
-        break;
-        
-      case 'OpenAI':
-        response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: modelId,
-            messages: [{ role: 'user', content: message }]
-          })
-        });
-        break;
-        
-      case 'Deepseek':
-        response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: modelId,
-            messages: [{ role: 'user', content: message }]
-          })
-        });
-        break;
-        
-      default:
-        throw new Error(`Unsupported provider: ${provider}`);
-    }
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API error (${response.status}): ${errorText}`);
-    }
-    
-    const data = await response.json();
-    
-    // Extract the text content based on provider-specific response format
-    let responseText = '';
-    
-    switch (provider) {
-      case 'OpenRouter':
-      case 'OpenAI':
-      case 'Deepseek':
-        responseText = data.choices[0]?.message?.content || 'No response content';
-        break;
-        
-      case 'Anthropic':
-        responseText = data.content[0]?.text || 'No response content';
-        break;
-        
-      case 'Google':
-        responseText = data.candidates[0]?.content?.parts[0]?.text || 'No response content';
-        break;
-        
-      default:
-        responseText = 'Unrecognized response format';
-    }
-    
-    return responseText;
-  } catch (error) {
-    console.error('API request error:', error);
-    throw error;
-  }
-};
-
 // Function to handle conversation history for better context
 const prepareMessagesForAPI = (messages: Message[], currentUserMessage: string, provider: Provider): any => {
   // Filter messages for the current conversation
@@ -390,6 +265,57 @@ export default function ChatPage() {
   // Ref for scrolling to the bottom of messages
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
+  // Function to create a new chat - defined early with useCallback
+  const createNewChat = useCallback(() => {
+    const newChatId = Date.now().toString();
+    const newChat: Chat = {
+      id: newChatId,
+      title: 'New Chat',
+      messages: [],
+      modelId: selectedModel,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    setChats(prevChats => [newChat, ...prevChats]);
+    setCurrentChatId(newChatId);
+    setMessages([]);
+  }, [selectedModel]);
+
+  // Generate a title based on first message or default to timestamp
+  const generateChatTitle = useCallback((): string => {
+    if (messages.length === 0) return 'New Chat';
+    
+    // Use first user message as title, truncated
+    const firstUserMessage = messages.find(msg => msg.sender === 'user');
+    if (firstUserMessage) {
+      const title = firstUserMessage.text.substring(0, 20);
+      return title.length < firstUserMessage.text.length ? `${title}...` : title;
+    }
+    
+    // Fallback to date
+    return `Chat ${new Date().toLocaleDateString()}`;
+  }, [messages]);
+
+  // Function to update current chat in history - defined early with useCallback
+  const updateCurrentChat = useCallback(() => {
+    if (!currentChatId) return;
+    
+    setChats(prevChats => 
+      prevChats.map(chat => 
+        chat.id === currentChatId 
+          ? {
+              ...chat,
+              messages: [...messages],
+              modelId: selectedModel,
+              title: chat.title === 'New Chat' ? generateChatTitle() : chat.title,
+              updatedAt: new Date()
+            }
+          : chat
+      )
+    );
+  }, [currentChatId, messages, selectedModel, generateChatTitle]);
+  
   // Close chat menu when clicking outside
   useEffect(() => {
     const handleClickOutside = () => {
@@ -429,7 +355,7 @@ export default function ChatPage() {
     if (messages.length > 0 && currentChatId) {
       updateCurrentChat();
     }
-  }, [messages]);
+  }, [messages, currentChatId, updateCurrentChat]);
 
   // Effect to create a new chat when the app loads if no chats exist
   useEffect(() => {
@@ -440,43 +366,7 @@ export default function ChatPage() {
       setMessages(chats[0].messages);
       setSelectedModel(chats[0].modelId);
     }
-  }, []);
-
-  // Function to create a new chat
-  const createNewChat = () => {
-    const newChatId = Date.now().toString();
-    const newChat: Chat = {
-      id: newChatId,
-      title: 'New Chat',
-      messages: [],
-      modelId: selectedModel,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    setChats(prevChats => [newChat, ...prevChats]);
-    setCurrentChatId(newChatId);
-    setMessages([]);
-  };
-
-  // Function to update current chat in history
-  const updateCurrentChat = () => {
-    if (!currentChatId) return;
-    
-    setChats(prevChats => 
-      prevChats.map(chat => 
-        chat.id === currentChatId 
-          ? {
-              ...chat,
-              messages: [...messages],
-              modelId: selectedModel,
-              title: chat.title === 'New Chat' ? generateChatTitle() : chat.title,
-              updatedAt: new Date()
-            }
-          : chat
-      )
-    );
-  };
+  }, [chats, currentChatId, createNewChat]);
 
   // Function to switch to a different chat
   const switchChat = (chatId: string) => {
@@ -542,21 +432,6 @@ export default function ChatPage() {
   const toggleChatMenu = (chatId: string, event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent triggering chat selection
     setChatIdWithMenuOpen(prev => prev === chatId ? null : chatId);
-  };
-
-  // Generate a title based on first message or default to timestamp
-  const generateChatTitle = (): string => {
-    if (messages.length === 0) return 'New Chat';
-    
-    // Use first user message as title, truncated
-    const firstUserMessage = messages.find(msg => msg.sender === 'user');
-    if (firstUserMessage) {
-      const title = firstUserMessage.text.substring(0, 20);
-      return title.length < firstUserMessage.text.length ? `${title}...` : title;
-    }
-    
-    // Fallback to date
-    return `Chat ${new Date().toLocaleDateString()}`;
   };
 
   // Function to toggle theme
