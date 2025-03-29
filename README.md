@@ -2,6 +2,9 @@
 
 A simple web-based chat interface for interacting with various AI models.
 
+> [!WARNING]
+> This project is in its initial development stage. Expect bugs and incomplete features as we work toward a stable release. Use at your own risk!
+
 ## Features
 
 - Modern UI with dark/light mode
