@@ -875,3 +875,215 @@
     padding: 12px 14px;
   }
 }
+
+/* Empty State Button */
+.empty-state-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 12px 24px;
+  background-color: var(--accent);
+  color: var(--bg-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.empty-state-button:hover {
+  background-color: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+/* Settings Modal Styles */
+.settings-modal {
+  max-width: 480px;
+}
+
+.settings-content {
+  padding: 0 !important;
+}
+
+.settings-section {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.settings-section:last-child {
+  border-bottom: none;
+}
+
+.settings-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+}
+
+.settings-section-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.settings-section-header svg {
+  opacity: 0.7;
+}
+
+.settings-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.settings-option > span {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.settings-toggle-group {
+  display: flex;
+  gap: 4px;
+  background-color: var(--bg-tertiary);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+}
+
+.settings-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.settings-toggle-btn:hover {
+  color: var(--text-primary);
+}
+
+.settings-toggle-btn.active {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.settings-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.settings-info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.settings-info-item > span:first-child {
+  color: var(--text-secondary);
+}
+
+.settings-info-value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-danger-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background-color: transparent;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.settings-danger-btn:hover {
+  background-color: #fef2f2;
+}
+
+.dark .settings-danger-btn:hover {
+  background-color: #1f1315;
+}
+
+.settings-confirm-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.settings-confirm-text {
+  font-size: 13px;
+  color: #ef4444;
+}
+
+.settings-confirm-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-cancel-btn {
+  padding: 8px 16px;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.settings-cancel-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.settings-about {
+  padding: 12px;
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.settings-about p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.settings-about p strong {
+  color: var(--text-primary);
+}
+
+.settings-about-desc {
+  margin-top: 4px !important;
+  line-height: 1.5;
+}
+
+.settings-version {
+  margin-top: 8px !important;
+  font-size: 11px !important;
+  color: var(--text-tertiary) !important;
+}

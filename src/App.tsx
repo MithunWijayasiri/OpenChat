@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, FormEvent, ChangeEvent, useCallback } from 'react';
-import { Sun, Moon, Send, Bot, User, Plus, Settings, ChevronDown, ChevronsLeft, ChevronsRight, MessageSquare, X, PlusSquare, Trash2, Edit, MoreHorizontal } from 'lucide-react'; // Added Trash2, Edit and MoreHorizontal icons
+import { Sun, Moon, Send, Bot, User, Plus, Settings, ChevronDown, ChevronsLeft, ChevronsRight, MessageSquare, X, PlusSquare, Trash2, Edit, MoreHorizontal, Key, Palette, Database, Info } from 'lucide-react';
 import './App.css';
 
 // Define message type
@@ -37,6 +37,134 @@ type Chat = {
   modelId: string;
   createdAt: Date;
   updatedAt: Date;
+};
+
+// Settings Modal Component
+const SettingsModal = ({ 
+  isOpen, 
+  onClose,
+  theme,
+  onThemeChange,
+  onClearAllData,
+  apiKeysCount,
+  chatsCount
+}: { 
+  isOpen: boolean, 
+  onClose: () => void,
+  theme: 'light' | 'dark',
+  onThemeChange: (theme: 'light' | 'dark') => void,
+  onClearAllData: () => void,
+  apiKeysCount: number,
+  chatsCount: number
+}) => {
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-container settings-modal">
+        <div className="modal-header">
+          <h2>Settings</h2>
+          <button onClick={onClose} className="modal-close-button">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="modal-content settings-content">
+          {/* Appearance Section */}
+          <div className="settings-section">
+            <div className="settings-section-header">
+              <Palette size={18} />
+              <h3>Appearance</h3>
+            </div>
+            <div className="settings-option">
+              <span>Theme</span>
+              <div className="settings-toggle-group">
+                <button 
+                  className={`settings-toggle-btn ${theme === 'light' ? 'active' : ''}`}
+                  onClick={() => onThemeChange('light')}
+                >
+                  <Sun size={14} />
+                  Light
+                </button>
+                <button 
+                  className={`settings-toggle-btn ${theme === 'dark' ? 'active' : ''}`}
+                  onClick={() => onThemeChange('dark')}
+                >
+                  <Moon size={14} />
+                  Dark
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Data & Storage Section */}
+          <div className="settings-section">
+            <div className="settings-section-header">
+              <Database size={18} />
+              <h3>Data & Storage</h3>
+            </div>
+            <div className="settings-info">
+              <div className="settings-info-item">
+                <span>API Keys stored</span>
+                <span className="settings-info-value">{apiKeysCount}</span>
+              </div>
+              <div className="settings-info-item">
+                <span>Chat conversations</span>
+                <span className="settings-info-value">{chatsCount}</span>
+              </div>
+            </div>
+            <div className="settings-option">
+              {!showClearConfirm ? (
+                <button 
+                  className="settings-danger-btn"
+                  onClick={() => setShowClearConfirm(true)}
+                >
+                  <Trash2 size={14} />
+                  Clear All Data
+                </button>
+              ) : (
+                <div className="settings-confirm-group">
+                  <span className="settings-confirm-text">Are you sure? This cannot be undone.</span>
+                  <div className="settings-confirm-buttons">
+                    <button 
+                      className="settings-cancel-btn"
+                      onClick={() => setShowClearConfirm(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      className="settings-danger-btn"
+                      onClick={() => {
+                        onClearAllData();
+                        setShowClearConfirm(false);
+                        onClose();
+                      }}
+                    >
+                      Delete All
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* About Section */}
+          <div className="settings-section">
+            <div className="settings-section-header">
+              <Info size={18} />
+              <h3>About</h3>
+            </div>
+            <div className="settings-about">
+              <p><strong>OpenGPT</strong></p>
+              <p className="settings-about-desc">A simple, modern chat interface for interacting with various AI models.</p>
+              <p className="settings-version">Version 1.0.0</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // Chat Title Edit Modal
@@ -248,7 +376,9 @@ export default function ChatPage() {
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
   
   // Chat history management
   const [chats, setChats] = useState<Chat[]>([]);
@@ -357,16 +487,77 @@ export default function ChatPage() {
     }
   }, [messages, currentChatId, updateCurrentChat]);
 
-  // Effect to create a new chat when the app loads if no chats exist
+  // Load data from localStorage on initial mount
   useEffect(() => {
-    if (chats.length === 0) {
-      createNewChat();
-    } else if (!currentChatId) {
-      setCurrentChatId(chats[0].id);
-      setMessages(chats[0].messages);
-      setSelectedModel(chats[0].modelId);
+    const savedChats = localStorage.getItem('opengpt-chats');
+    const savedApiKeys = localStorage.getItem('opengpt-apikeys');
+    const savedModels = localStorage.getItem('opengpt-models');
+    
+    if (savedApiKeys) {
+      try {
+        setApiKeys(JSON.parse(savedApiKeys));
+      } catch (e) {
+        console.error('Error loading API keys:', e);
+      }
     }
-  }, [chats, currentChatId, createNewChat]);
+    
+    if (savedModels) {
+      try {
+        setModels(JSON.parse(savedModels));
+      } catch (e) {
+        console.error('Error loading models:', e);
+      }
+    }
+    
+    if (savedChats) {
+      try {
+        const parsedChats = JSON.parse(savedChats);
+        if (parsedChats.length > 0) {
+          setChats(parsedChats);
+          setCurrentChatId(parsedChats[0].id);
+          setMessages(parsedChats[0].messages || []);
+          if (parsedChats[0].modelId) {
+            setSelectedModel(parsedChats[0].modelId);
+          }
+        }
+      } catch (e) {
+        console.error('Error loading chats:', e);
+      }
+    }
+    
+    setIsInitialized(true);
+  }, []);
+
+  // Save chats to localStorage whenever they change
+  useEffect(() => {
+    if (isInitialized && chats.length > 0) {
+      localStorage.setItem('opengpt-chats', JSON.stringify(chats));
+    } else if (isInitialized && chats.length === 0) {
+      localStorage.removeItem('opengpt-chats');
+    }
+  }, [chats, isInitialized]);
+
+  // Save API keys to localStorage whenever they change
+  useEffect(() => {
+    if (isInitialized) {
+      if (Object.keys(apiKeys).length > 0) {
+        localStorage.setItem('opengpt-apikeys', JSON.stringify(apiKeys));
+      } else {
+        localStorage.removeItem('opengpt-apikeys');
+      }
+    }
+  }, [apiKeys, isInitialized]);
+
+  // Save models to localStorage whenever they change
+  useEffect(() => {
+    if (isInitialized) {
+      if (models.length > 0) {
+        localStorage.setItem('opengpt-models', JSON.stringify(models));
+      } else {
+        localStorage.removeItem('opengpt-models');
+      }
+    }
+  }, [models, isInitialized]);
 
   // Function to switch to a different chat
   const switchChat = (chatId: string) => {
@@ -388,22 +579,35 @@ export default function ChatPage() {
   const deleteChat = (chatId: string, event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent triggering chat selection
     
-    if (chats.length <= 1) {
-      // Don't delete the last chat, create a new one first
-      createNewChat();
-    }
+    const remainingChats = chats.filter(chat => chat.id !== chatId);
+    setChats(remainingChats);
     
-    setChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
-    
-    // If we deleted the current chat, switch to the first available chat
+    // If we deleted the current chat, switch to the first available chat or clear
     if (chatId === currentChatId) {
-      const remainingChats = chats.filter(chat => chat.id !== chatId);
       if (remainingChats.length > 0) {
-        switchChat(remainingChats[0].id);
+        setCurrentChatId(remainingChats[0].id);
+        setMessages(remainingChats[0].messages || []);
+        setSelectedModel(remainingChats[0].modelId || '');
+      } else {
+        setCurrentChatId(null);
+        setMessages([]);
       }
     }
     
     setChatIdWithMenuOpen(null);
+  };
+
+  // Function to clear all data
+  const clearAllData = () => {
+    localStorage.removeItem('opengpt-chats');
+    localStorage.removeItem('opengpt-apikeys');
+    localStorage.removeItem('opengpt-models');
+    setChats([]);
+    setApiKeys({});
+    setModels([]);
+    setCurrentChatId(null);
+    setMessages([]);
+    setSelectedModel('');
   };
 
   // Function to edit a chat title
@@ -692,6 +896,17 @@ export default function ChatPage() {
         initialTitle={chatToEdit ? (chats.find(c => c.id === chatToEdit)?.title || '') : ''}
       />
 
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        theme={theme}
+        onThemeChange={setTheme}
+        onClearAllData={clearAllData}
+        apiKeysCount={Object.keys(apiKeys).length}
+        chatsCount={chats.length}
+      />
+
       {/* Sidebar */}
       <div className={`sidebar ${isSidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}`}> 
         <div className={`sidebar-content ${isSidebarCollapsed ? 'sidebar-centered' : ''}`}> 
@@ -819,7 +1034,7 @@ export default function ChatPage() {
           <button
             title="Settings"
             className={`footer-button ${isSidebarCollapsed ? 'footer-button-centered' : ''}`}
-            onClick={() => alert('Settings/Account area placeholder.')}
+            onClick={() => setIsSettingsModalOpen(true)}
           >
             <Settings size={16} className={`footer-button-icon ${!isSidebarCollapsed ? 'footer-button-icon-with-margin' : ''}`} />
             {!isSidebarCollapsed && <span>Settings</span>}
@@ -845,14 +1060,25 @@ export default function ChatPage() {
               <Bot size={48} className="empty-state-icon" />
               <p className="empty-state-text">How can I help you today?</p>
               {models.length === 0 ? (
-                <p className="empty-state-model">No models available. Please add an API key first.</p>
+                <>
+                  <p className="empty-state-model">No models available. Add an API key to get started.</p>
+                  <button 
+                    className="empty-state-button"
+                    onClick={() => setIsApiKeyModalOpen(true)}
+                  >
+                    <Key size={16} />
+                    Add API Key
+                  </button>
+                </>
               ) : (
-                <p className="empty-state-model">
-                  Selected Model: {models.find(m => m.id === selectedModel)?.name || 'None selected'}
-                </p>
-              )}
-              {apiKeys[selectedModel] && (
-                <p className="empty-state-provider">Provider: {apiKeys[selectedModel].provider}</p>
+                <>
+                  <p className="empty-state-model">
+                    Selected Model: {models.find(m => m.id === selectedModel)?.name || 'None selected'}
+                  </p>
+                  {apiKeys[selectedModel] && (
+                    <p className="empty-state-provider">Provider: {apiKeys[selectedModel].provider}</p>
+                  )}
+                </>
               )}
             </div>
           )}
