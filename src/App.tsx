@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef, FormEvent, ChangeEvent, useCallback } from 'react';
-import { Sun, Moon, Send, Bot, User, Plus, Settings, ChevronDown, ChevronsLeft, ChevronsRight, MessageSquare, X, PlusSquare, Trash2, Edit, MoreHorizontal, Key, Palette, Database, Info } from 'lucide-react';
+import { Sun, Moon, Send, Bot, User, Plus, Settings, ChevronDown, ChevronsLeft, ChevronsRight, MessageSquare, X, PlusSquare, Trash2, Edit, MoreHorizontal, Key, Palette, Database, Info, Loader2, Search, RefreshCw } from 'lucide-react';
 import './App.css';
+
+// Define available model type for fetched models
+type AvailableModel = {
+  id: string;
+  name: string;
+  description?: string;
+  context_length?: number;
+};
 
 // Define message type
 type Message = {
@@ -224,7 +232,7 @@ const ChatTitleEditModal = ({
   );
 };
 
-// API Key Modal Component
+// API Key Modal Component with Dynamic Model Fetching
 const ApiKeyModal = ({ isOpen, onClose, onAddKey }: { 
   isOpen: boolean, 
   onClose: () => void, 
@@ -234,12 +242,177 @@ const ApiKeyModal = ({ isOpen, onClose, onAddKey }: {
   const [model, setModel] = useState('');
   const [modelName, setModelName] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [availableModels, setAvailableModels] = useState<AvailableModel[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [modelError, setModelError] = useState<string | null>(null);
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const [modelSearchQuery, setModelSearchQuery] = useState('');
+  const [hasValidKey, setHasValidKey] = useState(false);
+
+  // Reset state when modal opens/closes or provider changes
+  useEffect(() => {
+    setAvailableModels([]);
+    setModel('');
+    setModelName('');
+    setModelError(null);
+    setShowModelDropdown(false);
+    setModelSearchQuery('');
+    setHasValidKey(false);
+  }, [provider, isOpen]);
+
+  // Fetch models based on provider and API key
+  const fetchModels = async () => {
+    if (!apiKey.trim()) {
+      setModelError('Please enter an API key first');
+      return;
+    }
+
+    setIsLoadingModels(true);
+    setModelError(null);
+    setAvailableModels([]);
+
+    try {
+      let models: AvailableModel[] = [];
+
+      switch (provider) {
+        case 'OpenRouter':
+          const orResponse = await fetch('https://openrouter.ai/api/v1/models', {
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'HTTP-Referer': window.location.origin,
+            }
+          });
+          if (!orResponse.ok) throw new Error('Invalid API key or failed to fetch models');
+          const orData = await orResponse.json();
+          models = orData.data?.map((m: any) => ({
+            id: m.id,
+            name: m.name || m.id,
+            description: m.description,
+            context_length: m.context_length
+          })) || [];
+          break;
+
+        case 'OpenAI':
+          const oaiResponse = await fetch('https://api.openai.com/v1/models', {
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+            }
+          });
+          if (!oaiResponse.ok) throw new Error('Invalid API key or failed to fetch models');
+          const oaiData = await oaiResponse.json();
+          // Filter to show only chat models
+          models = oaiData.data
+            ?.filter((m: any) => m.id.includes('gpt') || m.id.includes('o1') || m.id.includes('o3'))
+            .map((m: any) => ({
+              id: m.id,
+              name: m.id,
+            }))
+            .sort((a: AvailableModel, b: AvailableModel) => a.name.localeCompare(b.name)) || [];
+          break;
+
+        case 'Anthropic':
+          // Anthropic doesn't have a public models endpoint, so we provide known models
+          // These are fetched from their documentation - user's key validity will be checked on first use
+          models = [
+            { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', description: 'Latest Claude Sonnet model' },
+            { id: 'claude-opus-4-20250514', name: 'Claude Opus 4', description: 'Latest Claude Opus model' },
+            { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet', description: 'Hybrid model with extended thinking' },
+          ];
+          // Validate the key by making a minimal request
+          try {
+            const testResponse = await fetch('https://api.anthropic.com/v1/messages', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01'
+              },
+              body: JSON.stringify({
+                model: 'claude-3-haiku-20240307',
+                max_tokens: 1,
+                messages: [{ role: 'user', content: 'hi' }]
+              })
+            });
+            if (!testResponse.ok && testResponse.status === 401) {
+              throw new Error('Invalid API key');
+            }
+          } catch (e: any) {
+            if (e.message === 'Invalid API key') throw e;
+            // Network errors are okay, key might still be valid
+          }
+          break;
+
+        case 'Google':
+          const googleResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+          if (!googleResponse.ok) throw new Error('Invalid API key or failed to fetch models');
+          const googleData = await googleResponse.json();
+          models = googleData.models
+            ?.filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+            .map((m: any) => ({
+              id: m.name.replace('models/', ''),
+              name: m.displayName || m.name.replace('models/', ''),
+              description: m.description,
+            })) || [];
+          break;
+
+        case 'Deepseek':
+          // Deepseek uses OpenAI-compatible API
+          const dsResponse = await fetch('https://api.deepseek.com/models', {
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+            }
+          });
+          if (!dsResponse.ok) throw new Error('Invalid API key or failed to fetch models');
+          const dsData = await dsResponse.json();
+          models = dsData.data?.map((m: any) => ({
+            id: m.id,
+            name: m.id,
+          })) || [];
+          
+          // If no models returned, provide known Deepseek models
+          if (models.length === 0) {
+            models = [
+              { id: 'deepseek-chat', name: 'DeepSeek Chat', description: 'General purpose chat model' },
+              { id: 'deepseek-coder', name: 'DeepSeek Coder', description: 'Specialized for coding tasks' },
+              { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner', description: 'Advanced reasoning model' },
+            ];
+          }
+          break;
+      }
+
+      setAvailableModels(models);
+      setHasValidKey(true);
+      if (models.length === 0) {
+        setModelError('No models found for this provider');
+      }
+    } catch (error: any) {
+      console.error('Error fetching models:', error);
+      setModelError(error.message || 'Failed to fetch models. Check your API key.');
+      setHasValidKey(false);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
+
+  // Filter models based on search query
+  const filteredModels = availableModels.filter(m => 
+    m.name.toLowerCase().includes(modelSearchQuery.toLowerCase()) ||
+    m.id.toLowerCase().includes(modelSearchQuery.toLowerCase())
+  );
+
+  // Handle model selection
+  const selectModel = (selectedModel: AvailableModel) => {
+    setModel(selectedModel.id);
+    setModelName(selectedModel.name);
+    setShowModelDropdown(false);
+    setModelSearchQuery('');
+  };
 
   if (!isOpen) return null;
 
   return (
     <div className="modal-overlay">
-      <div className="modal-container">
+      <div className="modal-container api-key-modal">
         <div className="modal-header">
           <h2>Add API Key</h2>
           <button onClick={onClose} className="modal-close-button">
@@ -262,36 +435,118 @@ const ApiKeyModal = ({ isOpen, onClose, onAddKey }: {
               <option value="Deepseek">Deepseek</option>
             </select>
           </div>
+          
           <div className="modal-form-group">
-            <label htmlFor="model">Model ID</label>
-            <input 
-              type="text" 
-              id="model" 
-              placeholder="Enter model identifier (e.g., gpt-4)" 
-              value={model} 
-              onChange={(e) => setModel(e.target.value)}
-              className="modal-input"
-            />
+            <label htmlFor="apiKey">API Key</label>
+            <div className="api-key-input-group">
+              <input 
+                type="password" 
+                id="apiKey" 
+                placeholder="Enter API key" 
+                value={apiKey} 
+                onChange={(e) => {
+                  setApiKey(e.target.value);
+                  setHasValidKey(false);
+                  setAvailableModels([]);
+                }}
+                className="modal-input"
+              />
+              <button 
+                className="fetch-models-btn"
+                onClick={fetchModels}
+                disabled={!apiKey.trim() || isLoadingModels}
+                title="Fetch available models"
+              >
+                {isLoadingModels ? (
+                  <Loader2 size={16} className="spin" />
+                ) : (
+                  <RefreshCw size={16} />
+                )}
+              </button>
+            </div>
+            {hasValidKey && (
+              <span className="api-key-valid">✓ API key validated</span>
+            )}
           </div>
+
           <div className="modal-form-group">
-            <label htmlFor="modelName">Display Name</label>
+            <label htmlFor="model">Model</label>
+            {availableModels.length > 0 ? (
+              <div className="model-selector">
+                <div 
+                  className="model-selector-trigger"
+                  onClick={() => setShowModelDropdown(!showModelDropdown)}
+                >
+                  {model ? (
+                    <span className="model-selected">{modelName || model}</span>
+                  ) : (
+                    <span className="model-placeholder">Select a model...</span>
+                  )}
+                  <ChevronDown size={16} className={showModelDropdown ? 'rotate' : ''} />
+                </div>
+                
+                {showModelDropdown && (
+                  <div className="model-selector-dropdown">
+                    <div className="model-search">
+                      <Search size={14} />
+                      <input
+                        type="text"
+                        placeholder="Search models..."
+                        value={modelSearchQuery}
+                        onChange={(e) => setModelSearchQuery(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+                    <div className="model-list">
+                      {filteredModels.length > 0 ? (
+                        filteredModels.map((m) => (
+                          <div
+                            key={m.id}
+                            className={`model-option ${model === m.id ? 'selected' : ''}`}
+                            onClick={() => selectModel(m)}
+                          >
+                            <div className="model-option-info">
+                              <span className="model-option-name">{m.name}</span>
+                              <span className="model-option-id">{m.id}</span>
+                            </div>
+                            {m.context_length && (
+                              <span className="model-option-context">{(m.context_length / 1000).toFixed(0)}k</span>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="model-list-empty">No models found</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="model-fetch-prompt">
+                {isLoadingModels ? (
+                  <div className="model-loading">
+                    <Loader2 size={16} className="spin" />
+                    <span>Fetching available models...</span>
+                  </div>
+                ) : modelError ? (
+                  <div className="model-error">{modelError}</div>
+                ) : (
+                  <div className="model-hint">
+                    Enter your API key and click <RefreshCw size={12} /> to fetch available models
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="modal-form-group">
+            <label htmlFor="modelName">Display Name <span className="optional-label">(optional)</span></label>
             <input 
               type="text" 
               id="modelName" 
-              placeholder="Display name for this model" 
+              placeholder={model ? `${provider} - ${model}` : "Display name for this model"} 
               value={modelName} 
               onChange={(e) => setModelName(e.target.value)}
-              className="modal-input"
-            />
-          </div>
-          <div className="modal-form-group">
-            <label htmlFor="apiKey">API Key</label>
-            <input 
-              type="password" 
-              id="apiKey" 
-              placeholder="Enter API key" 
-              value={apiKey} 
-              onChange={(e) => setApiKey(e.target.value)}
               className="modal-input"
             />
           </div>
@@ -660,14 +915,26 @@ export default function ChatPage() {
       modelId: selectedModel,
     };
 
+    // Make sure we have a current chat BEFORE adding the message
+    let chatId = currentChatId;
+    if (!chatId) {
+      const newChatId = Date.now().toString();
+      const newChat: Chat = {
+        id: newChatId,
+        title: 'New Chat',
+        messages: [userMessage],
+        modelId: selectedModel,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      setChats(prevChats => [newChat, ...prevChats]);
+      setCurrentChatId(newChatId);
+      chatId = newChatId;
+    }
+
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     setInputMessage('');
     setIsLoading(true);
-
-    // Make sure we have a current chat
-    if (!currentChatId) {
-      createNewChat();
-    }
 
     try {
       // Check if selected model has an API key
