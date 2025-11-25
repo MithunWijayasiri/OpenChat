@@ -518,7 +518,7 @@
 
 .message-bubble-container {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   max-width: 80%;
   gap: 12px;
 }
@@ -577,6 +577,32 @@
   line-height: 1.7;
   margin: 0;
   word-break: break-word;
+  user-select: text;
+  cursor: text;
+}
+
+.copy-message-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  opacity: 0.5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+}
+
+.copy-message-btn:hover {
+  opacity: 1;
+  background-color: var(--hover-bg);
+}
+
+.copy-message-btn:active {
+  transform: scale(0.95);
 }
 
 /* Input Area */
@@ -1335,4 +1361,185 @@
 
 .spin {
   animation: spin 1s linear infinite;
+}
+
+/* Markdown Content Styles */
+.markdown-content {
+  font-size: 14px;
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+.markdown-content > *:first-child {
+  margin-top: 0;
+}
+
+.markdown-content > *:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-p {
+  margin: 0 0 12px 0;
+}
+
+.markdown-p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-h1 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin: 20px 0 12px 0;
+  color: var(--text-primary);
+}
+
+.markdown-h2 {
+  font-size: 1.3em;
+  font-weight: 600;
+  margin: 18px 0 10px 0;
+  color: var(--text-primary);
+}
+
+.markdown-h3 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin: 16px 0 8px 0;
+  color: var(--text-primary);
+}
+
+.markdown-ul,
+.markdown-ol {
+  margin: 8px 0 12px 0;
+  padding-left: 24px;
+}
+
+.markdown-li {
+  margin: 4px 0;
+}
+
+.markdown-link {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.markdown-link:hover {
+  text-decoration: underline;
+}
+
+.markdown-blockquote {
+  border-left: 3px solid var(--border-color);
+  margin: 12px 0;
+  padding: 8px 16px;
+  background-color: var(--bg-tertiary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.markdown-blockquote p {
+  margin: 0;
+}
+
+.markdown-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.markdown-th,
+.markdown-td {
+  border: 1px solid var(--border-color);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.markdown-th {
+  background-color: var(--bg-tertiary);
+  font-weight: 600;
+}
+
+.markdown-hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 16px 0;
+}
+
+.markdown-strong {
+  font-weight: 600;
+}
+
+.markdown-em {
+  font-style: italic;
+}
+
+/* Inline Code */
+.inline-code {
+  background-color: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', Consolas, monospace;
+  font-size: 0.9em;
+  color: var(--text-primary);
+}
+
+/* Code Block Wrapper */
+.code-block-wrapper {
+  margin: 12px 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.code-block-language {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: lowercase;
+}
+
+.code-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background-color: transparent;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.code-copy-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Override syntax highlighter styles */
+.code-block-wrapper pre {
+  margin: 0 !important;
+  padding: 12px !important;
+  background-color: var(--bg-tertiary) !important;
+}
+
+.code-block-wrapper code {
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', Consolas, monospace !important;
+}
+
+/* Ensure AI message bubble can grow for markdown content */
+.message-bubble-ai {
+  max-width: 100%;
+}
+
+.message-bubble-ai .markdown-content {
+  overflow-x: auto;
 }

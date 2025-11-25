@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef, FormEvent, ChangeEvent, useCallback } from 'react';
-import { Sun, Moon, Send, Bot, User, Plus, Settings, ChevronDown, ChevronsLeft, ChevronsRight, MessageSquare, X, PlusSquare, Trash2, Edit, MoreHorizontal, Key, Palette, Database, Info, Loader2, Search, RefreshCw } from 'lucide-react';
+import { Sun, Moon, Send, Bot, User, Plus, Settings, ChevronDown, ChevronsLeft, ChevronsRight, MessageSquare, X, PlusSquare, Trash2, Edit, MoreHorizontal, Key, Palette, Database, Info, Loader2, Search, RefreshCw, Copy, Check } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import './App.css';
 
 // Define available model type for fetched models
@@ -45,6 +49,131 @@ type Chat = {
   modelId: string;
   createdAt: Date;
   updatedAt: Date;
+};
+
+// Code Block Component with Copy Button
+const CodeBlock = ({ 
+  language, 
+  value, 
+  isDark 
+}: { 
+  language: string; 
+  value: string; 
+  isDark: boolean;
+}) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="code-block-wrapper">
+      <div className="code-block-header">
+        <span className="code-block-language">{language || 'code'}</span>
+        <button onClick={handleCopy} className="code-copy-btn">
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        style={isDark ? oneDark : oneLight}
+        language={language || 'text'}
+        PreTag="div"
+        customStyle={{
+          margin: 0,
+          borderRadius: '0 0 8px 8px',
+          fontSize: '13px',
+        }}
+      >
+        {value}
+      </SyntaxHighlighter>
+    </div>
+  );
+};
+
+// Markdown Message Component
+const MarkdownMessage = ({ content, isDark }: { content: string; isDark: boolean }) => {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        code({ node, className, children, ...props }) {
+          const match = /language-(\w+)/.exec(className || '');
+          const isInline = !match && !String(children).includes('\n');
+          
+          if (isInline) {
+            return (
+              <code className="inline-code" {...props}>
+                {children}
+              </code>
+            );
+          }
+          
+          return (
+            <CodeBlock
+              language={match ? match[1] : ''}
+              value={String(children).replace(/\n$/, '')}
+              isDark={isDark}
+            />
+          );
+        },
+        p({ children }) {
+          return <p className="markdown-p">{children}</p>;
+        },
+        h1({ children }) {
+          return <h1 className="markdown-h1">{children}</h1>;
+        },
+        h2({ children }) {
+          return <h2 className="markdown-h2">{children}</h2>;
+        },
+        h3({ children }) {
+          return <h3 className="markdown-h3">{children}</h3>;
+        },
+        ul({ children }) {
+          return <ul className="markdown-ul">{children}</ul>;
+        },
+        ol({ children }) {
+          return <ol className="markdown-ol">{children}</ol>;
+        },
+        li({ children }) {
+          return <li className="markdown-li">{children}</li>;
+        },
+        a({ href, children }) {
+          return (
+            <a href={href} target="_blank" rel="noopener noreferrer" className="markdown-link">
+              {children}
+            </a>
+          );
+        },
+        blockquote({ children }) {
+          return <blockquote className="markdown-blockquote">{children}</blockquote>;
+        },
+        table({ children }) {
+          return <table className="markdown-table">{children}</table>;
+        },
+        th({ children }) {
+          return <th className="markdown-th">{children}</th>;
+        },
+        td({ children }) {
+          return <td className="markdown-td">{children}</td>;
+        },
+        hr() {
+          return <hr className="markdown-hr" />;
+        },
+        strong({ children }) {
+          return <strong className="markdown-strong">{children}</strong>;
+        },
+        em({ children }) {
+          return <em className="markdown-em">{children}</em>;
+        },
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
 };
 
 // Settings Modal Component
@@ -1356,8 +1485,25 @@ export default function ChatPage() {
                   {message.sender === 'ai' ? <Bot size={18} /> : <User size={18} />}
                 </div>
                 <div className={`message-bubble ${message.sender === 'user' ? 'message-bubble-user' : 'message-bubble-ai'}`}>
-                  <p className="message-text">{message.text}</p>
+                  {message.sender === 'ai' ? (
+                    <div className="markdown-content">
+                      <MarkdownMessage content={message.text} isDark={theme === 'dark'} />
+                    </div>
+                  ) : (
+                    <p className="message-text">{message.text}</p>
+                  )}
                 </div>
+                {message.sender === 'user' && (
+                  <button
+                    className="copy-message-btn"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(message.text);
+                    }}
+                    title="Copy message"
+                  >
+                    <Copy size={16} />
+                  </button>
+                )}
               </div>
             </div>
           ))}
