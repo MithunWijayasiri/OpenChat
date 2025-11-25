@@ -1,6 +1,18 @@
 import { useState, useEffect, useRef, FormEvent, ChangeEvent, useCallback } from 'react';
-import { Sun, Moon, Send, Bot, User, Plus, Settings, ChevronDown, ChevronsLeft, ChevronsRight, MessageSquare, X, PlusSquare, Trash2, Edit, MoreHorizontal } from 'lucide-react'; // Added Trash2, Edit and MoreHorizontal icons
+import { Sun, Moon, Send, Bot, User, Plus, Settings, ChevronDown, ChevronsLeft, ChevronsRight, MessageSquare, X, PlusSquare, Trash2, Edit, MoreHorizontal, Key, Palette, Database, Info, Loader2, Search, RefreshCw, Copy, Check } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import './App.css';
+
+// Define available model type for fetched models
+type AvailableModel = {
+  id: string;
+  name: string;
+  description?: string;
+  context_length?: number;
+};
 
 // Define message type
 type Message = {
@@ -37,6 +49,259 @@ type Chat = {
   modelId: string;
   createdAt: Date;
   updatedAt: Date;
+};
+
+// Code Block Component with Copy Button
+const CodeBlock = ({ 
+  language, 
+  value, 
+  isDark 
+}: { 
+  language: string; 
+  value: string; 
+  isDark: boolean;
+}) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="code-block-wrapper">
+      <div className="code-block-header">
+        <span className="code-block-language">{language || 'code'}</span>
+        <button onClick={handleCopy} className="code-copy-btn">
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        style={isDark ? oneDark : oneLight}
+        language={language || 'text'}
+        PreTag="div"
+        customStyle={{
+          margin: 0,
+          borderRadius: '0 0 8px 8px',
+          fontSize: '13px',
+        }}
+      >
+        {value}
+      </SyntaxHighlighter>
+    </div>
+  );
+};
+
+// Markdown Message Component
+const MarkdownMessage = ({ content, isDark }: { content: string; isDark: boolean }) => {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        code({ node, className, children, ...props }) {
+          const match = /language-(\w+)/.exec(className || '');
+          const isInline = !match && !String(children).includes('\n');
+          
+          if (isInline) {
+            return (
+              <code className="inline-code" {...props}>
+                {children}
+              </code>
+            );
+          }
+          
+          return (
+            <CodeBlock
+              language={match ? match[1] : ''}
+              value={String(children).replace(/\n$/, '')}
+              isDark={isDark}
+            />
+          );
+        },
+        p({ children }) {
+          return <p className="markdown-p">{children}</p>;
+        },
+        h1({ children }) {
+          return <h1 className="markdown-h1">{children}</h1>;
+        },
+        h2({ children }) {
+          return <h2 className="markdown-h2">{children}</h2>;
+        },
+        h3({ children }) {
+          return <h3 className="markdown-h3">{children}</h3>;
+        },
+        ul({ children }) {
+          return <ul className="markdown-ul">{children}</ul>;
+        },
+        ol({ children }) {
+          return <ol className="markdown-ol">{children}</ol>;
+        },
+        li({ children }) {
+          return <li className="markdown-li">{children}</li>;
+        },
+        a({ href, children }) {
+          return (
+            <a href={href} target="_blank" rel="noopener noreferrer" className="markdown-link">
+              {children}
+            </a>
+          );
+        },
+        blockquote({ children }) {
+          return <blockquote className="markdown-blockquote">{children}</blockquote>;
+        },
+        table({ children }) {
+          return <table className="markdown-table">{children}</table>;
+        },
+        th({ children }) {
+          return <th className="markdown-th">{children}</th>;
+        },
+        td({ children }) {
+          return <td className="markdown-td">{children}</td>;
+        },
+        hr() {
+          return <hr className="markdown-hr" />;
+        },
+        strong({ children }) {
+          return <strong className="markdown-strong">{children}</strong>;
+        },
+        em({ children }) {
+          return <em className="markdown-em">{children}</em>;
+        },
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+};
+
+// Settings Modal Component
+const SettingsModal = ({ 
+  isOpen, 
+  onClose,
+  theme,
+  onThemeChange,
+  onClearAllData,
+  apiKeysCount,
+  chatsCount
+}: { 
+  isOpen: boolean, 
+  onClose: () => void,
+  theme: 'light' | 'dark',
+  onThemeChange: (theme: 'light' | 'dark') => void,
+  onClearAllData: () => void,
+  apiKeysCount: number,
+  chatsCount: number
+}) => {
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-container settings-modal">
+        <div className="modal-header">
+          <h2>Settings</h2>
+          <button onClick={onClose} className="modal-close-button">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="modal-content settings-content">
+          {/* Appearance Section */}
+          <div className="settings-section">
+            <div className="settings-section-header">
+              <Palette size={18} />
+              <h3>Appearance</h3>
+            </div>
+            <div className="settings-option">
+              <span>Theme</span>
+              <div className="settings-toggle-group">
+                <button 
+                  className={`settings-toggle-btn ${theme === 'light' ? 'active' : ''}`}
+                  onClick={() => onThemeChange('light')}
+                >
+                  <Sun size={14} />
+                  Light
+                </button>
+                <button 
+                  className={`settings-toggle-btn ${theme === 'dark' ? 'active' : ''}`}
+                  onClick={() => onThemeChange('dark')}
+                >
+                  <Moon size={14} />
+                  Dark
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Data & Storage Section */}
+          <div className="settings-section">
+            <div className="settings-section-header">
+              <Database size={18} />
+              <h3>Data & Storage</h3>
+            </div>
+            <div className="settings-info">
+              <div className="settings-info-item">
+                <span>API Keys stored</span>
+                <span className="settings-info-value">{apiKeysCount}</span>
+              </div>
+              <div className="settings-info-item">
+                <span>Chat conversations</span>
+                <span className="settings-info-value">{chatsCount}</span>
+              </div>
+            </div>
+            <div className="settings-option">
+              {!showClearConfirm ? (
+                <button 
+                  className="settings-danger-btn"
+                  onClick={() => setShowClearConfirm(true)}
+                >
+                  <Trash2 size={14} />
+                  Clear All Data
+                </button>
+              ) : (
+                <div className="settings-confirm-group">
+                  <span className="settings-confirm-text">Are you sure? This cannot be undone.</span>
+                  <div className="settings-confirm-buttons">
+                    <button 
+                      className="settings-cancel-btn"
+                      onClick={() => setShowClearConfirm(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      className="settings-danger-btn"
+                      onClick={() => {
+                        onClearAllData();
+                        setShowClearConfirm(false);
+                        onClose();
+                      }}
+                    >
+                      Delete All
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* About Section */}
+          <div className="settings-section">
+            <div className="settings-section-header">
+              <Info size={18} />
+              <h3>About</h3>
+            </div>
+            <div className="settings-about">
+              <p><strong>OpenGPT</strong></p>
+              <p className="settings-about-desc">A simple, modern chat interface for interacting with various AI models.</p>
+              <p className="settings-version">Version 1.0.0</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // Chat Title Edit Modal
@@ -96,7 +361,7 @@ const ChatTitleEditModal = ({
   );
 };
 
-// API Key Modal Component
+// API Key Modal Component with Dynamic Model Fetching
 const ApiKeyModal = ({ isOpen, onClose, onAddKey }: { 
   isOpen: boolean, 
   onClose: () => void, 
@@ -106,12 +371,177 @@ const ApiKeyModal = ({ isOpen, onClose, onAddKey }: {
   const [model, setModel] = useState('');
   const [modelName, setModelName] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [availableModels, setAvailableModels] = useState<AvailableModel[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [modelError, setModelError] = useState<string | null>(null);
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const [modelSearchQuery, setModelSearchQuery] = useState('');
+  const [hasValidKey, setHasValidKey] = useState(false);
+
+  // Reset state when modal opens/closes or provider changes
+  useEffect(() => {
+    setAvailableModels([]);
+    setModel('');
+    setModelName('');
+    setModelError(null);
+    setShowModelDropdown(false);
+    setModelSearchQuery('');
+    setHasValidKey(false);
+  }, [provider, isOpen]);
+
+  // Fetch models based on provider and API key
+  const fetchModels = async () => {
+    if (!apiKey.trim()) {
+      setModelError('Please enter an API key first');
+      return;
+    }
+
+    setIsLoadingModels(true);
+    setModelError(null);
+    setAvailableModels([]);
+
+    try {
+      let models: AvailableModel[] = [];
+
+      switch (provider) {
+        case 'OpenRouter':
+          const orResponse = await fetch('https://openrouter.ai/api/v1/models', {
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'HTTP-Referer': window.location.origin,
+            }
+          });
+          if (!orResponse.ok) throw new Error('Invalid API key or failed to fetch models');
+          const orData = await orResponse.json();
+          models = orData.data?.map((m: any) => ({
+            id: m.id,
+            name: m.name || m.id,
+            description: m.description,
+            context_length: m.context_length
+          })) || [];
+          break;
+
+        case 'OpenAI':
+          const oaiResponse = await fetch('https://api.openai.com/v1/models', {
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+            }
+          });
+          if (!oaiResponse.ok) throw new Error('Invalid API key or failed to fetch models');
+          const oaiData = await oaiResponse.json();
+          // Filter to show only chat models
+          models = oaiData.data
+            ?.filter((m: any) => m.id.includes('gpt') || m.id.includes('o1') || m.id.includes('o3'))
+            .map((m: any) => ({
+              id: m.id,
+              name: m.id,
+            }))
+            .sort((a: AvailableModel, b: AvailableModel) => a.name.localeCompare(b.name)) || [];
+          break;
+
+        case 'Anthropic':
+          // Anthropic doesn't have a public models endpoint, so we provide known models
+          // These are fetched from their documentation - user's key validity will be checked on first use
+          models = [
+            { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', description: 'Latest Claude Sonnet model' },
+            { id: 'claude-opus-4-20250514', name: 'Claude Opus 4', description: 'Latest Claude Opus model' },
+            { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet', description: 'Hybrid model with extended thinking' },
+          ];
+          // Validate the key by making a minimal request
+          try {
+            const testResponse = await fetch('https://api.anthropic.com/v1/messages', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01'
+              },
+              body: JSON.stringify({
+                model: 'claude-3-haiku-20240307',
+                max_tokens: 1,
+                messages: [{ role: 'user', content: 'hi' }]
+              })
+            });
+            if (!testResponse.ok && testResponse.status === 401) {
+              throw new Error('Invalid API key');
+            }
+          } catch (e: any) {
+            if (e.message === 'Invalid API key') throw e;
+            // Network errors are okay, key might still be valid
+          }
+          break;
+
+        case 'Google':
+          const googleResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+          if (!googleResponse.ok) throw new Error('Invalid API key or failed to fetch models');
+          const googleData = await googleResponse.json();
+          models = googleData.models
+            ?.filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+            .map((m: any) => ({
+              id: m.name.replace('models/', ''),
+              name: m.displayName || m.name.replace('models/', ''),
+              description: m.description,
+            })) || [];
+          break;
+
+        case 'Deepseek':
+          // Deepseek uses OpenAI-compatible API
+          const dsResponse = await fetch('https://api.deepseek.com/models', {
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+            }
+          });
+          if (!dsResponse.ok) throw new Error('Invalid API key or failed to fetch models');
+          const dsData = await dsResponse.json();
+          models = dsData.data?.map((m: any) => ({
+            id: m.id,
+            name: m.id,
+          })) || [];
+          
+          // If no models returned, provide known Deepseek models
+          if (models.length === 0) {
+            models = [
+              { id: 'deepseek-chat', name: 'DeepSeek Chat', description: 'General purpose chat model' },
+              { id: 'deepseek-coder', name: 'DeepSeek Coder', description: 'Specialized for coding tasks' },
+              { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner', description: 'Advanced reasoning model' },
+            ];
+          }
+          break;
+      }
+
+      setAvailableModels(models);
+      setHasValidKey(true);
+      if (models.length === 0) {
+        setModelError('No models found for this provider');
+      }
+    } catch (error: any) {
+      console.error('Error fetching models:', error);
+      setModelError(error.message || 'Failed to fetch models. Check your API key.');
+      setHasValidKey(false);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
+
+  // Filter models based on search query
+  const filteredModels = availableModels.filter(m => 
+    m.name.toLowerCase().includes(modelSearchQuery.toLowerCase()) ||
+    m.id.toLowerCase().includes(modelSearchQuery.toLowerCase())
+  );
+
+  // Handle model selection
+  const selectModel = (selectedModel: AvailableModel) => {
+    setModel(selectedModel.id);
+    setModelName(selectedModel.name);
+    setShowModelDropdown(false);
+    setModelSearchQuery('');
+  };
 
   if (!isOpen) return null;
 
   return (
     <div className="modal-overlay">
-      <div className="modal-container">
+      <div className="modal-container api-key-modal">
         <div className="modal-header">
           <h2>Add API Key</h2>
           <button onClick={onClose} className="modal-close-button">
@@ -134,36 +564,118 @@ const ApiKeyModal = ({ isOpen, onClose, onAddKey }: {
               <option value="Deepseek">Deepseek</option>
             </select>
           </div>
+          
           <div className="modal-form-group">
-            <label htmlFor="model">Model ID</label>
-            <input 
-              type="text" 
-              id="model" 
-              placeholder="Enter model identifier (e.g., gpt-4)" 
-              value={model} 
-              onChange={(e) => setModel(e.target.value)}
-              className="modal-input"
-            />
+            <label htmlFor="apiKey">API Key</label>
+            <div className="api-key-input-group">
+              <input 
+                type="password" 
+                id="apiKey" 
+                placeholder="Enter API key" 
+                value={apiKey} 
+                onChange={(e) => {
+                  setApiKey(e.target.value);
+                  setHasValidKey(false);
+                  setAvailableModels([]);
+                }}
+                className="modal-input"
+              />
+              <button 
+                className="fetch-models-btn"
+                onClick={fetchModels}
+                disabled={!apiKey.trim() || isLoadingModels}
+                title="Fetch available models"
+              >
+                {isLoadingModels ? (
+                  <Loader2 size={16} className="spin" />
+                ) : (
+                  <RefreshCw size={16} />
+                )}
+              </button>
+            </div>
+            {hasValidKey && (
+              <span className="api-key-valid">✓ API key validated</span>
+            )}
           </div>
+
           <div className="modal-form-group">
-            <label htmlFor="modelName">Display Name</label>
+            <label htmlFor="model">Model</label>
+            {availableModels.length > 0 ? (
+              <div className="model-selector">
+                <div 
+                  className="model-selector-trigger"
+                  onClick={() => setShowModelDropdown(!showModelDropdown)}
+                >
+                  {model ? (
+                    <span className="model-selected">{modelName || model}</span>
+                  ) : (
+                    <span className="model-placeholder">Select a model...</span>
+                  )}
+                  <ChevronDown size={16} className={showModelDropdown ? 'rotate' : ''} />
+                </div>
+                
+                {showModelDropdown && (
+                  <div className="model-selector-dropdown">
+                    <div className="model-search">
+                      <Search size={14} />
+                      <input
+                        type="text"
+                        placeholder="Search models..."
+                        value={modelSearchQuery}
+                        onChange={(e) => setModelSearchQuery(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+                    <div className="model-list">
+                      {filteredModels.length > 0 ? (
+                        filteredModels.map((m) => (
+                          <div
+                            key={m.id}
+                            className={`model-option ${model === m.id ? 'selected' : ''}`}
+                            onClick={() => selectModel(m)}
+                          >
+                            <div className="model-option-info">
+                              <span className="model-option-name">{m.name}</span>
+                              <span className="model-option-id">{m.id}</span>
+                            </div>
+                            {m.context_length && (
+                              <span className="model-option-context">{(m.context_length / 1000).toFixed(0)}k</span>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="model-list-empty">No models found</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="model-fetch-prompt">
+                {isLoadingModels ? (
+                  <div className="model-loading">
+                    <Loader2 size={16} className="spin" />
+                    <span>Fetching available models...</span>
+                  </div>
+                ) : modelError ? (
+                  <div className="model-error">{modelError}</div>
+                ) : (
+                  <div className="model-hint">
+                    Enter your API key and click <RefreshCw size={12} /> to fetch available models
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="modal-form-group">
+            <label htmlFor="modelName">Display Name <span className="optional-label">(optional)</span></label>
             <input 
               type="text" 
               id="modelName" 
-              placeholder="Display name for this model" 
+              placeholder={model ? `${provider} - ${model}` : "Display name for this model"} 
               value={modelName} 
               onChange={(e) => setModelName(e.target.value)}
-              className="modal-input"
-            />
-          </div>
-          <div className="modal-form-group">
-            <label htmlFor="apiKey">API Key</label>
-            <input 
-              type="password" 
-              id="apiKey" 
-              placeholder="Enter API key" 
-              value={apiKey} 
-              onChange={(e) => setApiKey(e.target.value)}
               className="modal-input"
             />
           </div>
@@ -248,7 +760,9 @@ export default function ChatPage() {
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
   
   // Chat history management
   const [chats, setChats] = useState<Chat[]>([]);
@@ -357,16 +871,77 @@ export default function ChatPage() {
     }
   }, [messages, currentChatId, updateCurrentChat]);
 
-  // Effect to create a new chat when the app loads if no chats exist
+  // Load data from localStorage on initial mount
   useEffect(() => {
-    if (chats.length === 0) {
-      createNewChat();
-    } else if (!currentChatId) {
-      setCurrentChatId(chats[0].id);
-      setMessages(chats[0].messages);
-      setSelectedModel(chats[0].modelId);
+    const savedChats = localStorage.getItem('opengpt-chats');
+    const savedApiKeys = localStorage.getItem('opengpt-apikeys');
+    const savedModels = localStorage.getItem('opengpt-models');
+    
+    if (savedApiKeys) {
+      try {
+        setApiKeys(JSON.parse(savedApiKeys));
+      } catch (e) {
+        console.error('Error loading API keys:', e);
+      }
     }
-  }, [chats, currentChatId, createNewChat]);
+    
+    if (savedModels) {
+      try {
+        setModels(JSON.parse(savedModels));
+      } catch (e) {
+        console.error('Error loading models:', e);
+      }
+    }
+    
+    if (savedChats) {
+      try {
+        const parsedChats = JSON.parse(savedChats);
+        if (parsedChats.length > 0) {
+          setChats(parsedChats);
+          setCurrentChatId(parsedChats[0].id);
+          setMessages(parsedChats[0].messages || []);
+          if (parsedChats[0].modelId) {
+            setSelectedModel(parsedChats[0].modelId);
+          }
+        }
+      } catch (e) {
+        console.error('Error loading chats:', e);
+      }
+    }
+    
+    setIsInitialized(true);
+  }, []);
+
+  // Save chats to localStorage whenever they change
+  useEffect(() => {
+    if (isInitialized && chats.length > 0) {
+      localStorage.setItem('opengpt-chats', JSON.stringify(chats));
+    } else if (isInitialized && chats.length === 0) {
+      localStorage.removeItem('opengpt-chats');
+    }
+  }, [chats, isInitialized]);
+
+  // Save API keys to localStorage whenever they change
+  useEffect(() => {
+    if (isInitialized) {
+      if (Object.keys(apiKeys).length > 0) {
+        localStorage.setItem('opengpt-apikeys', JSON.stringify(apiKeys));
+      } else {
+        localStorage.removeItem('opengpt-apikeys');
+      }
+    }
+  }, [apiKeys, isInitialized]);
+
+  // Save models to localStorage whenever they change
+  useEffect(() => {
+    if (isInitialized) {
+      if (models.length > 0) {
+        localStorage.setItem('opengpt-models', JSON.stringify(models));
+      } else {
+        localStorage.removeItem('opengpt-models');
+      }
+    }
+  }, [models, isInitialized]);
 
   // Function to switch to a different chat
   const switchChat = (chatId: string) => {
@@ -388,22 +963,35 @@ export default function ChatPage() {
   const deleteChat = (chatId: string, event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent triggering chat selection
     
-    if (chats.length <= 1) {
-      // Don't delete the last chat, create a new one first
-      createNewChat();
-    }
+    const remainingChats = chats.filter(chat => chat.id !== chatId);
+    setChats(remainingChats);
     
-    setChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
-    
-    // If we deleted the current chat, switch to the first available chat
+    // If we deleted the current chat, switch to the first available chat or clear
     if (chatId === currentChatId) {
-      const remainingChats = chats.filter(chat => chat.id !== chatId);
       if (remainingChats.length > 0) {
-        switchChat(remainingChats[0].id);
+        setCurrentChatId(remainingChats[0].id);
+        setMessages(remainingChats[0].messages || []);
+        setSelectedModel(remainingChats[0].modelId || '');
+      } else {
+        setCurrentChatId(null);
+        setMessages([]);
       }
     }
     
     setChatIdWithMenuOpen(null);
+  };
+
+  // Function to clear all data
+  const clearAllData = () => {
+    localStorage.removeItem('opengpt-chats');
+    localStorage.removeItem('opengpt-apikeys');
+    localStorage.removeItem('opengpt-models');
+    setChats([]);
+    setApiKeys({});
+    setModels([]);
+    setCurrentChatId(null);
+    setMessages([]);
+    setSelectedModel('');
   };
 
   // Function to edit a chat title
@@ -456,14 +1044,26 @@ export default function ChatPage() {
       modelId: selectedModel,
     };
 
+    // Make sure we have a current chat BEFORE adding the message
+    let chatId = currentChatId;
+    if (!chatId) {
+      const newChatId = Date.now().toString();
+      const newChat: Chat = {
+        id: newChatId,
+        title: 'New Chat',
+        messages: [userMessage],
+        modelId: selectedModel,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      setChats(prevChats => [newChat, ...prevChats]);
+      setCurrentChatId(newChatId);
+      chatId = newChatId;
+    }
+
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     setInputMessage('');
     setIsLoading(true);
-
-    // Make sure we have a current chat
-    if (!currentChatId) {
-      createNewChat();
-    }
 
     try {
       // Check if selected model has an API key
@@ -692,6 +1292,17 @@ export default function ChatPage() {
         initialTitle={chatToEdit ? (chats.find(c => c.id === chatToEdit)?.title || '') : ''}
       />
 
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        theme={theme}
+        onThemeChange={setTheme}
+        onClearAllData={clearAllData}
+        apiKeysCount={Object.keys(apiKeys).length}
+        chatsCount={chats.length}
+      />
+
       {/* Sidebar */}
       <div className={`sidebar ${isSidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}`}> 
         <div className={`sidebar-content ${isSidebarCollapsed ? 'sidebar-centered' : ''}`}> 
@@ -819,7 +1430,7 @@ export default function ChatPage() {
           <button
             title="Settings"
             className={`footer-button ${isSidebarCollapsed ? 'footer-button-centered' : ''}`}
-            onClick={() => alert('Settings/Account area placeholder.')}
+            onClick={() => setIsSettingsModalOpen(true)}
           >
             <Settings size={16} className={`footer-button-icon ${!isSidebarCollapsed ? 'footer-button-icon-with-margin' : ''}`} />
             {!isSidebarCollapsed && <span>Settings</span>}
@@ -845,14 +1456,25 @@ export default function ChatPage() {
               <Bot size={48} className="empty-state-icon" />
               <p className="empty-state-text">How can I help you today?</p>
               {models.length === 0 ? (
-                <p className="empty-state-model">No models available. Please add an API key first.</p>
+                <>
+                  <p className="empty-state-model">No models available. Add an API key to get started.</p>
+                  <button 
+                    className="empty-state-button"
+                    onClick={() => setIsApiKeyModalOpen(true)}
+                  >
+                    <Key size={16} />
+                    Add API Key
+                  </button>
+                </>
               ) : (
-                <p className="empty-state-model">
-                  Selected Model: {models.find(m => m.id === selectedModel)?.name || 'None selected'}
-                </p>
-              )}
-              {apiKeys[selectedModel] && (
-                <p className="empty-state-provider">Provider: {apiKeys[selectedModel].provider}</p>
+                <>
+                  <p className="empty-state-model">
+                    Selected Model: {models.find(m => m.id === selectedModel)?.name || 'None selected'}
+                  </p>
+                  {apiKeys[selectedModel] && (
+                    <p className="empty-state-provider">Provider: {apiKeys[selectedModel].provider}</p>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -863,8 +1485,25 @@ export default function ChatPage() {
                   {message.sender === 'ai' ? <Bot size={18} /> : <User size={18} />}
                 </div>
                 <div className={`message-bubble ${message.sender === 'user' ? 'message-bubble-user' : 'message-bubble-ai'}`}>
-                  <p className="message-text">{message.text}</p>
+                  {message.sender === 'ai' ? (
+                    <div className="markdown-content">
+                      <MarkdownMessage content={message.text} isDark={theme === 'dark'} />
+                    </div>
+                  ) : (
+                    <p className="message-text">{message.text}</p>
+                  )}
                 </div>
+                {message.sender === 'user' && (
+                  <button
+                    className="copy-message-btn"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(message.text);
+                    }}
+                    title="Copy message"
+                  >
+                    <Copy size={16} />
+                  </button>
+                )}
               </div>
             </div>
           ))}
