@@ -26,7 +26,7 @@ A modern, minimal web-based chat interface for interacting with various AI model
 ### Prerequisites
 
 - Node.js (v14 or higher)
-- npm or yarn
+- pnpm (Install with `npm install -g pnpm` if you don't have it)
 
 ### Installation
 
@@ -38,12 +38,12 @@ A modern, minimal web-based chat interface for interacting with various AI model
 
 2. Install dependencies
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. Start the development server
    ```bash
-   npm start
+   pnpm start
    ```
 
 The app will open at `http://localhost:3000`
