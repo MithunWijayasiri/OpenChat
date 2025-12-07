@@ -168,6 +168,7 @@
   border: none;
   background: transparent;
   cursor: pointer;
+  position: relative;
 }
 
 .dropdown-item-selected {
@@ -179,12 +180,48 @@
   background-color: var(--bg-hover);
 }
 
+.dropdown-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 8px;
+}
+
 .dropdown-item-provider {
-  margin-left: auto;
+  margin-left: 0;
   font-size: 11px;
   color: var(--text-tertiary);
   font-weight: 400;
-  padding-left: 8px;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+
+.dropdown-item-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: var(--transition);
+  padding: 0;
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+.dropdown-item:hover .dropdown-item-delete {
+  opacity: 1;
+}
+
+.dropdown-item-delete:hover {
+  background-color: #ef4444;
+  border-color: #ef4444;
+  color: white;
 }
 
 /* Chat History Styles */

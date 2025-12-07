@@ -1,8 +1,8 @@
-# OpenGPT
+# 🤖 OpenGPT
 
-A modern, minimal web-based chat interface for interacting with various AI models.
+A modern, minimal web-based chat interface for interacting with various AI models. Chat with OpenRouter, Anthropic, Google, OpenAI, Deepseek and more - all in one beautiful interface!
 
-## Features
+## ✨ Features
 
 - **Modern Minimal Aesthetic** - Clean UI with dark/light mode
 - **Multi-Provider Support** - OpenRouter, Anthropic, Google, OpenAI, Deepseek
@@ -13,7 +13,7 @@ A modern, minimal web-based chat interface for interacting with various AI model
 - **Responsive Design** - Collapsible sidebar, works on desktop and mobile
 - **Settings** - Theme switching, data management, about information
 
-## Technologies
+## 🛠️ Tech Stack
 
 - React + TypeScript
 - React Markdown with GitHub Flavored Markdown support
@@ -21,14 +21,14 @@ A modern, minimal web-based chat interface for interacting with various AI model
 - Lucide React icons
 - Modern CSS with CSS variables
 
-## Getting Started
+## 🚀 Getting Started
 
-### Prerequisites
+### 📋 Prerequisites
 
 - Node.js (v14 or higher)
-- npm or yarn
+- pnpm (Install with `npm install -g pnpm` if you don't have it)
 
-### Installation
+### 📦 Installation
 
 1. Clone the repository
    ```bash
@@ -38,17 +38,17 @@ A modern, minimal web-based chat interface for interacting with various AI model
 
 2. Install dependencies
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. Start the development server
    ```bash
-   npm start
+   pnpm start
    ```
 
 The app will open at `http://localhost:3000`
 
-## Usage
+## 💡 Usage
 
 1. **Add API Key** - Click "Add API Key" in the sidebar to configure a provider
 2. **Fetch Models** - Enter your API key and click the refresh button to see available models
@@ -56,31 +56,31 @@ The app will open at `http://localhost:3000`
 4. **Start Chatting** - Type your message and press Enter (Shift+Enter for newline)
 5. **Manage Chats** - Chat history is automatically saved locally
 
-## Features in Detail
+## 🎯 Features in Detail
 
-### Multi-Provider Support
+### 🌐 Multi-Provider Support
 - **OpenRouter**: Access 200+ models from various providers
-- **OpenAI**: GPT-4, GPT-3.5, and other models
-- **Anthropic**: Claude models (3, 3.5, 4 and latest)
+- **OpenAI**: GPT-5, GPT-5-Codex, and other models
+- **Anthropic**: Claude models (4 and latest)
 - **Google**: Gemini models
 - **Deepseek**: DeepSeek Chat and specialized models
 
-### Smart Model Discovery
+### 🔍 Smart Model Discovery
 - Fetch latest available models directly from provider APIs
 - Search and filter models by name or ID
 - View context window sizes for models that provide them
 
-### Rich Message Formatting
+### 🎨 Rich Message Formatting
 - Code blocks with syntax highlighting for 100+ languages
 - Copy buttons for easy code copying
 - Headers, lists, tables, blockquotes, and links
 - Inline code formatting
 
-### Data Persistence
+### 💾 Data Persistence
 - Chat history saved locally in browser storage
 - API keys stored locally (never sent to servers)
 - Model configurations remembered between sessions
 
-## License
+## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
