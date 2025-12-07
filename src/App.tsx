@@ -6,7 +6,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import './App.css';
 
-// Define available model type for fetched models
+// Represents an available AI model fetched from a provider
 type AvailableModel = {
   id: string;
   name: string;
@@ -14,7 +14,7 @@ type AvailableModel = {
   context_length?: number;
 };
 
-// Define message type
+// Represents a single chat message
 type Message = {
   id: number;
   sender: 'user' | 'ai';
@@ -22,17 +22,17 @@ type Message = {
   modelId?: string;
 };
 
-// Define model type (simple for now)
+// Represents a configured AI model
 type AIModel = {
   id: string;
   name: string;
   provider?: Provider;
 };
 
-// Define provider type
+// Supported AI providers
 type Provider = 'OpenRouter' | 'Anthropic' | 'Google' | 'OpenAI' | 'Deepseek';
 
-// Define API key storage type
+// Structure for storing API keys
 type APIKeyStorage = {
   [key: string]: { 
     provider: Provider, 
@@ -41,7 +41,7 @@ type APIKeyStorage = {
   }
 };
 
-// Define chat history type
+// Represents a chat session history
 type Chat = {
   id: string;
   title: string;
@@ -51,7 +51,7 @@ type Chat = {
   updatedAt: Date;
 };
 
-// Code Block Component with Copy Button
+// Component to render code blocks with syntax highlighting and copy functionality
 const CodeBlock = ({ 
   language, 
   value, 
@@ -94,7 +94,7 @@ const CodeBlock = ({
   );
 };
 
-// Markdown Message Component
+// Renders Markdown content with custom components
 const MarkdownMessage = ({ content, isDark }: { content: string; isDark: boolean }) => {
   return (
     <ReactMarkdown
@@ -176,7 +176,7 @@ const MarkdownMessage = ({ content, isDark }: { content: string; isDark: boolean
   );
 };
 
-// Settings Modal Component
+// Modal for application settings (appearance, data, about)
 const SettingsModal = ({ 
   isOpen, 
   onClose,
@@ -304,7 +304,7 @@ const SettingsModal = ({
   );
 };
 
-// Chat Title Edit Modal
+// Modal to edit the title of a chat conversation
 const ChatTitleEditModal = ({ 
   isOpen, 
   onClose, 
@@ -361,7 +361,7 @@ const ChatTitleEditModal = ({
   );
 };
 
-// API Key Modal Component with Dynamic Model Fetching
+// Modal for managing API keys and fetching available models
 const ApiKeyModal = ({ isOpen, onClose, onAddKey }: { 
   isOpen: boolean, 
   onClose: () => void, 
@@ -378,7 +378,7 @@ const ApiKeyModal = ({ isOpen, onClose, onAddKey }: {
   const [modelSearchQuery, setModelSearchQuery] = useState('');
   const [hasValidKey, setHasValidKey] = useState(false);
 
-  // Reset state when modal opens/closes or provider changes
+  // Resets modal state on provider change or close
   useEffect(() => {
     setAvailableModels([]);
     setModel('');
@@ -389,7 +389,7 @@ const ApiKeyModal = ({ isOpen, onClose, onAddKey }: {
     setHasValidKey(false);
   }, [provider, isOpen]);
 
-  // Fetch models based on provider and API key
+  // Fetches available models from the selected provider
   const fetchModels = async () => {
     if (!apiKey.trim()) {
       setModelError('Please enter an API key first');
@@ -523,13 +523,13 @@ const ApiKeyModal = ({ isOpen, onClose, onAddKey }: {
     }
   };
 
-  // Filter models based on search query
+  // Filters available models based on user search input
   const filteredModels = availableModels.filter(m => 
     m.name.toLowerCase().includes(modelSearchQuery.toLowerCase()) ||
     m.id.toLowerCase().includes(modelSearchQuery.toLowerCase())
   );
 
-  // Handle model selection
+  // Updates state with selected model details
   const selectModel = (selectedModel: AvailableModel) => {
     setModel(selectedModel.id);
     setModelName(selectedModel.name);
@@ -704,7 +704,7 @@ const ApiKeyModal = ({ isOpen, onClose, onAddKey }: {
   );
 };
 
-// Function to handle conversation history for better context
+// Prepares the message history for the specific provider API
 const prepareMessagesForAPI = (messages: Message[], currentUserMessage: string, provider: Provider): any => {
   // Filter messages for the current conversation
   const conversationMessages = messages.slice(-10); // Last 10 messages for context
@@ -752,7 +752,6 @@ const prepareMessagesForAPI = (messages: Message[], currentUserMessage: string, 
 };
 
 export default function ChatPage() {
-  // State variables
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState<string>('');
@@ -764,23 +763,33 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   
-  // Chat history management
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [chatToEdit, setChatToEdit] = useState<string | null>(null);
   const [chatIdWithMenuOpen, setChatIdWithMenuOpen] = useState<string | null>(null);
   
-  // API keys storage
   const [apiKeys, setApiKeys] = useState<APIKeyStorage>({});
 
-  // Initial built-in models - now empty
+  // List of available AI models
   const [models, setModels] = useState<AIModel[]>([]);
 
-  // Ref for scrolling to the bottom of messages
+  // Reference to the end of the message list for auto-scrolling
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Ref for model dropdown
+  const modelDropdownRef = useRef<HTMLDivElement>(null);
   
-  // Function to create a new chat - defined early with useCallback
+  // Creates a new chat session
   const createNewChat = useCallback(() => {
+    // Check if the most recent chat is empty to prevent spamming
+    if (chats.length > 0 && chats[0].messages.length === 0) {
+      setCurrentChatId(chats[0].id);
+      setMessages([]);
+      setChats(prevChats => prevChats.map(c => 
+        c.id === chats[0].id ? { ...c, modelId: selectedModel } : c
+      ));
+      return;
+    }
+
     const newChatId = Date.now().toString();
     const newChat: Chat = {
       id: newChatId,
@@ -794,9 +803,9 @@ export default function ChatPage() {
     setChats(prevChats => [newChat, ...prevChats]);
     setCurrentChatId(newChatId);
     setMessages([]);
-  }, [selectedModel]);
+  }, [selectedModel, chats]);
 
-  // Generate a title based on first message or default to timestamp
+  // Generates a chat title based on the first user message
   const generateChatTitle = useCallback((): string => {
     if (messages.length === 0) return 'New Chat';
     
@@ -811,7 +820,7 @@ export default function ChatPage() {
     return `Chat ${new Date().toLocaleDateString()}`;
   }, [messages]);
 
-  // Function to update current chat in history - defined early with useCallback
+  // Updates the current chat in the history list
   const updateCurrentChat = useCallback(() => {
     if (!currentChatId) return;
     
@@ -830,7 +839,7 @@ export default function ChatPage() {
     );
   }, [currentChatId, messages, selectedModel, generateChatTitle]);
   
-  // Close chat menu when clicking outside
+  // Closes the chat options menu when clicking outside
   useEffect(() => {
     const handleClickOutside = () => {
       setChatIdWithMenuOpen(null);
@@ -840,7 +849,21 @@ export default function ChatPage() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  // Effect to handle theme changes based on system preference or saved state
+  // Closes the model selector dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target as Node)) {
+        setIsModelDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Initializes theme from local storage or system preference
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -848,7 +871,7 @@ export default function ChatPage() {
     setTheme(initialTheme);
   }, []);
 
-  // Effect to apply theme class to HTML element and save preference
+  // Applies the selected theme to the document and persists it
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -859,19 +882,19 @@ export default function ChatPage() {
     }
   }, [theme]);
 
-  // Effect to scroll to bottom when new messages are added
+  // Auto-scrolls to the latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Effect to save current chat to history when messages change
+  // Persists the current chat when messages are updated
   useEffect(() => {
     if (messages.length > 0 && currentChatId) {
       updateCurrentChat();
     }
   }, [messages, currentChatId, updateCurrentChat]);
 
-  // Load data from localStorage on initial mount
+  // Hydrates application state from local storage
   useEffect(() => {
     const savedChats = localStorage.getItem('opengpt-chats');
     const savedApiKeys = localStorage.getItem('opengpt-apikeys');
@@ -912,7 +935,7 @@ export default function ChatPage() {
     setIsInitialized(true);
   }, []);
 
-  // Save chats to localStorage whenever they change
+  // Persists chat history to local storage
   useEffect(() => {
     if (isInitialized && chats.length > 0) {
       localStorage.setItem('opengpt-chats', JSON.stringify(chats));
@@ -921,7 +944,7 @@ export default function ChatPage() {
     }
   }, [chats, isInitialized]);
 
-  // Save API keys to localStorage whenever they change
+  // Persists API keys to local storage
   useEffect(() => {
     if (isInitialized) {
       if (Object.keys(apiKeys).length > 0) {
@@ -932,7 +955,7 @@ export default function ChatPage() {
     }
   }, [apiKeys, isInitialized]);
 
-  // Save models to localStorage whenever they change
+  // Persists model configuration to local storage
   useEffect(() => {
     if (isInitialized) {
       if (models.length > 0) {
@@ -943,7 +966,7 @@ export default function ChatPage() {
     }
   }, [models, isInitialized]);
 
-  // Function to switch to a different chat
+  // Switches the active chat session
   const switchChat = (chatId: string) => {
     // Save current chat first
     if (currentChatId && messages.length > 0) {
@@ -959,7 +982,7 @@ export default function ChatPage() {
     }
   };
 
-  // Function to delete a chat
+  // Deletes a specific chat session
   const deleteChat = (chatId: string, event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent triggering chat selection
     
@@ -981,7 +1004,7 @@ export default function ChatPage() {
     setChatIdWithMenuOpen(null);
   };
 
-  // Function to clear all data
+  // Clears all application data from local storage
   const clearAllData = () => {
     localStorage.removeItem('opengpt-chats');
     localStorage.removeItem('opengpt-apikeys');
@@ -994,14 +1017,14 @@ export default function ChatPage() {
     setSelectedModel('');
   };
 
-  // Function to edit a chat title
+  // Opens the edit title modal for a specific chat
   const editChatTitle = (chatId: string, event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent triggering chat selection
     setChatToEdit(chatId);
     setChatIdWithMenuOpen(null);
   };
 
-  // Function to save edited chat title
+  // Updates the chat title
   const saveChatTitle = (newTitle: string) => {
     if (!chatToEdit) return;
     
@@ -1016,25 +1039,30 @@ export default function ChatPage() {
     setChatToEdit(null);
   };
 
-  // Function to toggle chat options menu
+  // Toggles the visibility of the chat options menu
   const toggleChatMenu = (chatId: string, event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent triggering chat selection
     setChatIdWithMenuOpen(prev => prev === chatId ? null : chatId);
   };
 
-  // Function to toggle theme
+  // Toggles between light and dark themes
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
   };
 
-  // Function to toggle sidebar collapse state
+  // Toggles the sidebar visibility
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
 
-  // Function to handle sending messages
+  // Handles message submission and AI response generation
   const handleSendMessage = async (e?: FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
+    
+    if (!selectedModel) {
+      return;
+    }
+    
     if (!inputMessage.trim() || isLoading) return;
 
     const userMessage: Message = {
@@ -1066,23 +1094,23 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      // Check if selected model has an API key
+      // Verifies API key availability for the selected model
       const apiKeyInfo = apiKeys[selectedModel];
       
       // Create AI response
       let aiResponseText = '';
       
       if (apiKeyInfo) {
-        // If we have API key info, use the actual API request
+        // Executes the API request using the stored key
         try {
-          // Prepare the request body with conversation context
+          // Formats the request body
           const reqBody = prepareMessagesForAPI(
             messages, 
             userMessage.text, 
             apiKeyInfo.provider
           );
           
-          // Make the API request
+          // Sends the request to the provider
           let response;
           
           switch (apiKeyInfo.provider) {
@@ -1203,7 +1231,7 @@ export default function ChatPage() {
           aiResponseText = `Error: ${apiError.message || 'Unknown API error'}`;
         }
       } else {
-        // Fallback to simulated response for built-in models
+        // Handles missing API keys
         const currentModelName = models.find(m => m.id === selectedModel)?.name || 'AI';
         aiResponseText = `(${currentModelName}): This is a placeholder response. Please add an API key for this model to get real responses.`;
       }
@@ -1231,7 +1259,7 @@ export default function ChatPage() {
     }
   };
 
-  // Function to handle input change
+  // Updates input state and auto-resizes the textarea
   const handleInputChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setInputMessage(e.target.value);
     // Auto-resize textarea (simple version)
@@ -1239,7 +1267,7 @@ export default function ChatPage() {
     e.target.style.height = `${e.target.scrollHeight}px`;
   };
 
-  // Function to handle Enter key press in textarea (Shift+Enter for newline)
+  // Handles key press events for message submission
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -1249,7 +1277,7 @@ export default function ChatPage() {
     }
   };
 
-  // Function for adding API keys and creating a new model entry
+  // Adds a new API key and model configuration
   const handleAddApiKey = (provider: Provider, modelId: string, apiKey: string, modelName: string) => {
     // Store the API key
     setApiKeys(prev => ({ 
@@ -1273,6 +1301,28 @@ export default function ChatPage() {
     }
     
     console.log(`API Key added for ${provider} model: ${modelId} (${modelName})`);
+  };
+
+  // Removes a model and its associated API key
+  const deleteModel = (modelId: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent triggering model selection
+    
+    const newModels = models.filter(m => m.id !== modelId);
+    setModels(newModels);
+    
+    setApiKeys(prev => {
+      const newKeys = { ...prev };
+      delete newKeys[modelId];
+      return newKeys;
+    });
+
+    if (selectedModel === modelId) {
+      if (newModels.length > 0) {
+        setSelectedModel(newModels[0].id);
+      } else {
+        setSelectedModel('');
+      }
+    }
   };
 
   return (
@@ -1316,7 +1366,7 @@ export default function ChatPage() {
           </button>
 
           {/* Model Selector Dropdown */}
-          <div className="model-dropdown">
+          <div className="model-dropdown" ref={modelDropdownRef}>
             <button
               onClick={() => !isSidebarCollapsed && setIsModelDropdownOpen(!isModelDropdownOpen)}
               disabled={isSidebarCollapsed || models.length === 0}
@@ -1340,17 +1390,24 @@ export default function ChatPage() {
             {!isSidebarCollapsed && isModelDropdownOpen && models.length > 0 && (
               <div className="dropdown-menu">
                 {models.map((model) => (
-                  <button
+                  <div
                     key={model.id}
+                    className={`dropdown-item ${selectedModel === model.id ? 'dropdown-item-selected' : ''}`}
                     onClick={() => {
                       setSelectedModel(model.id);
                       setIsModelDropdownOpen(false);
                     }}
-                    className={`dropdown-item ${selectedModel === model.id ? 'dropdown-item-selected' : ''}`}
                   >
-                    {model.name}
+                    <span className="dropdown-item-name">{model.name}</span>
                     {model.provider && <span className="dropdown-item-provider">({model.provider})</span>}
-                  </button>
+                    <button 
+                      className="dropdown-item-delete"
+                      onClick={(e) => deleteModel(model.id, e)}
+                      title="Remove model"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -1365,7 +1422,8 @@ export default function ChatPage() {
                 key={chat.id}
                 className="history-item-container"
               >
-                <button 
+                <div 
+                  role="button"
                   onClick={() => switchChat(chat.id)}
                   className={`history-item ${isSidebarCollapsed ? 'history-item-centered' : ''} ${currentChatId === chat.id ? 'history-item-active' : ''}`}
                 > 
@@ -1383,7 +1441,7 @@ export default function ChatPage() {
                       <MoreHorizontal size={16} />
                     </button>
                   )}
-                </button>
+                </div>
 
                 {/* Chat options menu */}
                 {!isSidebarCollapsed && chatIdWithMenuOpen === chat.id && (
@@ -1449,37 +1507,36 @@ export default function ChatPage() {
 
       {/* Main Chat Area */}
       <div className="main-chat">
-        {/* Message List */}
-        <div className="message-list message-list-spaced">
-          {messages.length === 0 && (
-            <div className="empty-state">
-              <Bot size={48} className="empty-state-icon" />
-              <p className="empty-state-text">How can I help you today?</p>
-              {models.length === 0 ? (
-                <>
-                  <p className="empty-state-model">No models available. Add an API key to get started.</p>
-                  <button 
-                    className="empty-state-button"
-                    onClick={() => setIsApiKeyModalOpen(true)}
-                  >
-                    <Key size={16} />
-                    Add API Key
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p className="empty-state-model">
-                    Selected Model: {models.find(m => m.id === selectedModel)?.name || 'None selected'}
-                  </p>
-                  {apiKeys[selectedModel] && (
-                    <p className="empty-state-provider">Provider: {apiKeys[selectedModel].provider}</p>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-          {messages.map((message) => (
-            <div key={message.id} className={`message-container ${message.sender === 'user' ? 'message-container-user' : 'message-container-ai'}`}> 
+                  {/* Message List */}
+                <div className="message-list message-list-spaced">
+                  {messages.length === 0 && (
+                    <div className="empty-state">
+                      <Bot size={48} className="empty-state-icon" />
+                      <p className="empty-state-text">How can I help you today?</p>
+                      {models.length === 0 ? (
+                        <>
+                          <p className="empty-state-model">No models available. Add an API key to get started.</p>
+                          <button 
+                            className="empty-state-button"
+                            onClick={() => setIsApiKeyModalOpen(true)}
+                          >
+                            <Key size={16} />
+                            Add API Key
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="empty-state-model">
+                            Selected Model: {models.find(m => m.id === selectedModel)?.name || 'None selected'}
+                          </p>
+                                            {apiKeys[selectedModel] && (
+                                              <p className="empty-state-provider">Provider: {apiKeys[selectedModel].provider}</p>
+                                            )}
+                                          </>
+                                        )}
+                                      </div>
+                                    )}
+                                    {messages.map((message) => (            <div key={message.id} className={`message-container ${message.sender === 'user' ? 'message-container-user' : 'message-container-ai'}`}> 
               <div className={`message-bubble-container ${message.sender === 'user' ? 'message-bubble-container-user' : 'message-bubble-container-ai'}`}> 
                 <div className={`avatar ${message.sender === 'ai' ? 'avatar-ai' : 'avatar-user'}`}> 
                   {message.sender === 'ai' ? <Bot size={18} /> : <User size={18} />}
@@ -1528,7 +1585,7 @@ export default function ChatPage() {
               />
               <button
                 type="submit"
-                disabled={!inputMessage.trim() || isLoading || models.length === 0}
+                disabled={!inputMessage.trim() || isLoading || models.length === 0 || !selectedModel}
                 className="send-button"
               >
                 <Send size={18} />
